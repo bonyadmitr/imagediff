@@ -31,6 +31,21 @@ test('нет отличий → status no_diffs', () => {
   assert.equal(r.diffs.length, 0);
 });
 
+test('maxResults оставляет N самых сильных, отсортированных по силе', () => {
+  // одно крупное отличие и два мелких
+  const diffs = [{ x: 20, y: 20, size: 24 }, { x: 75, y: 30, size: 8 }, { x: 45, y: 65, size: 8 }];
+  const img = makePuzzle({ orientation: 'horizontal', diffs });
+  const r = findDifferences(img, { maxResults: 2 });
+  assert.equal(r.diffs.length, 2);
+  assert.ok(r.diffs[0].score >= r.diffs[1].score, 'отсортировано по убыванию силы');
+  // крупное отличие должно попасть в топ
+  const big = diffs[0];
+  const covered = r.diffs.some((b) =>
+    big.x + big.size / 2 >= b.x && big.x + big.size / 2 <= b.x + b.w &&
+    big.y + big.size / 2 >= b.y && big.y + big.size / 2 <= b.y + b.h);
+  assert.ok(covered, 'крупное отличие в топ-2');
+});
+
 test('баннер не порождает ложных отличий', () => {
   const img = makePuzzle({ orientation: 'horizontal', diffs: DIFFS, banner: 40 });
   const r = findDifferences(img);

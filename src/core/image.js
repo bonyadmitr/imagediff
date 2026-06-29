@@ -60,4 +60,17 @@ export function boxBlur(gray, r) {
   return { data: out, width, height };
 }
 
+// Разбор RGBA на отдельные каналы (Float32) + полутон. Для цветного сравнения.
+export function channelsFromRGBA(image) {
+  const { data, width, height } = image;
+  const n = width * height;
+  const r = new Float32Array(n), g = new Float32Array(n), b = new Float32Array(n), gray = new Float32Array(n);
+  for (let i = 0, p = 0; i < n; i++, p += 4) {
+    const R = data[p], G = data[p + 1], B = data[p + 2];
+    r[i] = R; g[i] = G; b[i] = B;
+    gray[i] = 0.299 * R + 0.587 * G + 0.114 * B;
+  }
+  return { r, g, b, gray, width, height };
+}
+
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
