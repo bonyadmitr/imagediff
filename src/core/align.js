@@ -4,14 +4,27 @@ import { downscale } from './image.js';
 // и ориентацию. Возвращает { orientation, dx, dy, score } в полном разрешении
 // или null, если уверенного совпадения нет.
 export function findOffset(gray, opts) {
-  const factor = chooseFactor(gray.width, gray.height, opts.alignMaxDim);
-  const small = downscale(gray, factor);
+  // Грубый поиск на сильно уменьшенной копии.
+  const cf = chooseFactor(gray.width, gray.height, opts.alignMaxDim);
+  const small = downscale(gray, cf);
   const h = opts.orientation !== 'vertical' ? bestForOrientation(small, 'horizontal', opts) : null;
   const v = opts.orientation !== 'horizontal' ? bestForOrientation(small, 'vertical', opts) : null;
   let best = (h && v) ? (h.score <= v.score ? h : v) : (h || v);
   if (!best || best.score > opts.alignMaxScore) return null;
-  const coarse = { orientation: best.orientation, dx: best.dx * factor, dy: best.dy * factor };
-  return refine(gray, coarse, factor, opts);
+
+  // Уточнение на умеренно уменьшенной копии (НЕ на полном разрешении — это было бы
+  // в десятки раз дороже, а такая точность не нужна: дальше всё считается на рабочем
+  // масштабе с допуском matchRadius).
+  const rf = chooseFactor(gray.width, gray.height, opts.alignRefineDim);
+  const med = downscale(gray, rf);
+  const coarseMed = {
+    orientation: best.orientation,
+    dx: Math.round(best.dx * cf / rf),
+    dy: Math.round(best.dy * cf / rf),
+  };
+  const win = Math.ceil(cf / rf) + 1;
+  const r = refineAt(med, coarseMed, win, opts.refineStep);
+  return { orientation: best.orientation, dx: r.dx * rf, dy: r.dy * rf, score: r.score };
 }
 
 function bestForOrientation(g, orientation, opts) {
@@ -46,12 +59,14 @@ function mad(g, dx, dy, step) {
   return n < 32 ? null : sum / n;
 }
 
-function refine(gray, coarse, factor, opts) {
-  let best = { ...coarse, score: Infinity };
-  for (let ddy = -factor; ddy <= factor; ddy++)
-    for (let ddx = -factor; ddx <= factor; ddx++) {
+// Точный перебор смещения в окне ±win (шаг 1) вокруг грубой оценки, на переданном
+// (уже уменьшенном) изображении. Окно небольшое, поэтому это дёшево.
+function refineAt(gray, coarse, win, step) {
+  let best = { orientation: coarse.orientation, dx: coarse.dx, dy: coarse.dy, score: Infinity };
+  for (let ddy = -win; ddy <= win; ddy++)
+    for (let ddx = -win; ddx <= win; ddx++) {
       const dx = coarse.dx + ddx, dy = coarse.dy + ddy;
-      const s = mad(gray, dx, dy, opts.refineStep);
+      const s = mad(gray, dx, dy, step);
       if (s !== null && s < best.score) best = { orientation: coarse.orientation, dx, dy, score: s };
     }
   return best;
