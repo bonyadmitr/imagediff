@@ -63,6 +63,8 @@ canvas { max-width: 100%; height: auto; border-radius: 6px; }
   font-size: 15px;
   min-height: 20px;
 }
+.hint { font-size: 13px; margin: -6px 0 10px; }
+
 .status.ok { color: var(--ok); }
 .status.warn { color: var(--warn); }
 .status.error { color: var(--accent); }
