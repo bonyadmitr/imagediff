@@ -60,5 +60,6 @@ git push
 
 - **Service worker caching:** after a redeploy, returning users may keep the old version until the SW updates. The SW uses a versioned cache name (`imagediff-vN` in `app/sw.js`); bump that version when shipping changes you need users to get immediately.
 - **Subpath:** the site is served under `/<repo>/`, not the domain root. All asset paths in the app are relative, so this works — don't hardcode leading-slash absolute paths.
+- **URL lands on `/<repo>/app/`, not `/<repo>/`** (by design). The app lives in `app/` (kept separate from the portable `src/core/` engine it imports via `../src/core/…`); the root `index.html` only redirects to `app/`. The bare `/<repo>/` URL works via that redirect. To serve the app directly at `/<repo>/`, move the app files to the repo root and fix relative paths (`../src/core/…` → `./src/core/…`, `sw.js` cache list, `manifest.webmanifest`), then drop the redirect. Decided to keep the redirect for simplicity (2026-06-30).
 - **HTTPS only:** Pages is HTTPS, so the service worker and ES modules work (they require a secure context).
 - Don't switch to a `gh-pages` branch or `/docs` folder unless asked — root-of-main is simplest for this repo.
